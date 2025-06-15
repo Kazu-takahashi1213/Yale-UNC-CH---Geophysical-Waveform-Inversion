@@ -57,6 +57,8 @@ def cleanup():
     if dist.is_initialized():
         dist.barrier()
         dist.destroy_process_group()
+
+
     return
 
 def main(cfg):
@@ -66,6 +68,7 @@ def main(cfg):
         print("="*25)
         print("Loading data..")
     train_ds = CustomDataset(cfg=cfg, mode="train")
+
     if cfg.world_size > 1:
         sampler = DistributedSampler(train_ds, num_replicas=cfg.world_size, rank=cfg.local_rank)
         shuffle = False
@@ -93,6 +96,7 @@ def main(cfg):
         shuffle=shuffle,
         batch_size=cfg.batch_size_val,
         num_workers=4,
+
     )
 
     # ========== Model / Optim ==========
@@ -111,10 +115,12 @@ def main(cfg):
         )
     else:
         ema_model = None
+
     if cfg.world_size > 1:
         model = DistributedDataParallel(
             model,
             device_ids=[cfg.local_rank],
+
         )
     
     criterion = nn.L1Loss()
@@ -133,9 +139,11 @@ def main(cfg):
 
     for epoch in range(0, cfg.epochs+1):
         if epoch != 0:
+
             tstart = time.time()
             if hasattr(train_dl.sampler, "set_epoch"):
                 train_dl.sampler.set_epoch(epoch)
+
     
             # Train loop
             model.train()
@@ -208,11 +216,13 @@ def main(cfg):
 
         # Gather loss
         v = torch.tensor([loss], device=cfg.local_rank)
+
         if cfg.world_size > 1:
             torch.distributed.all_reduce(v, op=dist.ReduceOp.SUM)
             val_loss = (v[0] / cfg.world_size).item()
         else:
             val_loss = v.item()
+
     
         # ========== Weights / Early stopping ==========
         stop_train = torch.tensor([0], device=cfg.local_rank)
@@ -236,8 +246,10 @@ def main(cfg):
                     stop_train = torch.tensor([1], device=cfg.local_rank)
         
         # Exits training on all ranks
+
         if cfg.world_size > 1:
             dist.broadcast(stop_train, src=0)
+
         if stop_train.item() == 1:
             return
 
@@ -248,8 +260,10 @@ def main(cfg):
 if __name__ == "__main__":
 
     # GPU Specs
+
     rank = int(os.environ.get("RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
+
     _, total = torch.cuda.mem_get_info(device=rank)
 
     # Init
