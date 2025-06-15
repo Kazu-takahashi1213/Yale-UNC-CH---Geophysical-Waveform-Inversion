@@ -35,6 +35,8 @@ cfg.aug = SimpleNamespace(
 cfg.distill = SimpleNamespace(
 
     teacher_models=[
+        'vit_huge_patch14_224',
+
         'vit_large_patch16_224',
         'vit_base_patch16_224',
     ],

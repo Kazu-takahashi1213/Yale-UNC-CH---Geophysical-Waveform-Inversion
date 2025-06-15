@@ -284,7 +284,6 @@ def main(cfg):
 if __name__ == "__main__":
 
     # GPU Specs
-
     rank = int(os.environ.get("RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
 
