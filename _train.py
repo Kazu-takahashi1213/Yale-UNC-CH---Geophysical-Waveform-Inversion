@@ -16,7 +16,9 @@ from torch.nn.parallel import DistributedDataParallel
 from _cfg import cfg
 from _dataset import CustomDataset
 from _model import ModelEMA, Net
-from _utils import format_time
+
+from _utils import format_time, diffusion_smoothing
+
 from _aug import mixup, cutmix
 
 
@@ -59,7 +61,6 @@ def cleanup():
         dist.barrier()
         dist.destroy_process_group()
 
-
     return
 
 def main(cfg):
@@ -99,43 +100,20 @@ def main(cfg):
         batch_size=cfg.batch_size_val,
         num_workers=4,
 
-    sampler= DistributedSampler(
-        train_ds, 
-        num_replicas=cfg.world_size, 
-        rank=cfg.local_rank,
-    )
-
-    train_dl = torch.utils.data.DataLoader(
-        train_ds,
-        sampler=sampler,
-        shuffle=shuffle,
-        batch_size=cfg.batch_size,
-        num_workers=4,
-    )
-    
-    valid_ds = CustomDataset(cfg=cfg, mode="valid")
-    if cfg.world_size > 1:
-        sampler = DistributedSampler(valid_ds, num_replicas=cfg.world_size, rank=cfg.local_rank)
-        shuffle = False
-    else:
-        sampler = None
-        shuffle = False
-    valid_dl = torch.utils.data.DataLoader(
-
-        valid_ds, 
-        sampler= sampler,
-        batch_size= cfg.batch_size_val, 
-        num_workers= 4,
-
-
     )
 
     # ========== Model / Optim ==========
     model = Net(backbone=cfg.backbone)
-    model= model.to(cfg.local_rank)
-    teacher = Net(backbone=cfg.distill.teacher_model)
-    teacher = teacher.to(cfg.local_rank)
-    teacher.eval()
+
+    model = model.to(cfg.local_rank)
+
+    teachers = []
+    for tb in cfg.distill.teacher_models:
+        t_net = Net(backbone=tb)
+        t_net = t_net.to(cfg.local_rank)
+        t_net.eval()
+        teachers.append(t_net)
+
     if cfg.ema:
         if cfg.local_rank == 0:
             print("Initializing EMA model..")
@@ -189,8 +167,16 @@ def main(cfg):
         
                 with autocast(cfg.device.type):
                     with torch.no_grad():
-                        t_logits = teacher(x)
+
+                        t_outs = [t(x) for t in teachers]
+                        t_logits = torch.stack(t_outs).mean(dim=0)
                     logits = model(x)
+                    logits = diffusion_smoothing(
+                        logits,
+                        cfg.postprocess.diffusion_steps,
+                        cfg.postprocess.diffusion_sigma,
+                    )
+
                     mae = multi_scale_loss(logits, y, cfg.multi_scales)
                     distill_loss = F.mse_loss(logits, t_logits)
                     phys = gradient_loss(logits, y) * cfg.phys_weight
@@ -236,6 +222,13 @@ def main(cfg):
                         out = ema_model.module(x)
                     else:
                         out = model(x)
+
+                    out = diffusion_smoothing(
+                        out,
+                        cfg.postprocess.diffusion_steps,
+                        cfg.postprocess.diffusion_sigma,
+                    )
+
 
                 val_logits.append(out.cpu())
                 val_targets.append(y.cpu())

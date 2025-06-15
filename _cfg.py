@@ -33,10 +33,20 @@ cfg.aug = SimpleNamespace(
     label_smoothing=0.1,
 )
 cfg.distill = SimpleNamespace(
-    teacher_model='vit_base_patch16_224',
+
+    teacher_models=[
+        'vit_large_patch16_224',
+        'vit_base_patch16_224',
+    ],
     temperature=4.0,
     alpha=0.5,
 )
+cfg.distill.teacher_model = cfg.distill.teacher_models[0]
+cfg.postprocess = SimpleNamespace(
+    diffusion_steps=3,
+    diffusion_sigma=0.1,
+)
+
 cfg.phys_weight = 0.1
 cfg.multi_scales = [1, 2, 4]
 

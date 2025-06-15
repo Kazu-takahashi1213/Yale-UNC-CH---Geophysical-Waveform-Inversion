@@ -22,4 +22,6 @@ Edit `_cfg.py` to adjust hyperparameters such as batch size or number of epochs.
 - **RandAugment, MixUp, and CutMix** data augmentation in the training pipeline.
 - **Knowledge distillation** with a configurable teacher model.
 - **EMA weights** and gradient-based physical loss for smoother convergence.
+- **Ensemble distillation** from multiple teachers for improved generalization.
+- **Diffusion-based post-processing** to smooth predictions before evaluation.
 
