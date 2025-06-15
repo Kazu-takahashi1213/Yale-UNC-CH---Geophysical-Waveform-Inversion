@@ -16,7 +16,7 @@ from torch.nn.parallel import DistributedDataParallel
 from _cfg import cfg
 from _dataset import CustomDataset
 from _model import ModelEMA, Net
-from _utils import format_time
+from _utils import format_time, diffusion_smoothing
 from _aug import mixup, cutmix
 
 
@@ -75,11 +75,26 @@ def main(cfg):
         shuffle = False
     else:
         sampler = None
-        shuffle = True
+    model = model.to(cfg.local_rank)
 
-    train_dl = torch.utils.data.DataLoader(
-        train_ds,
-        sampler=sampler,
+    teachers = []
+    for tb in cfg.distill.teacher_models:
+        t_net = Net(backbone=tb)
+        t_net = t_net.to(cfg.local_rank)
+        t_net.eval()
+        teachers.append(t_net)
+                        t_outs = [t(x) for t in teachers]
+                        t_logits = torch.stack(t_outs).mean(dim=0)
+                    logits = diffusion_smoothing(
+                        logits,
+                        cfg.postprocess.diffusion_steps,
+                        cfg.postprocess.diffusion_sigma,
+                    )
+                    out = diffusion_smoothing(
+                        out,
+                        cfg.postprocess.diffusion_steps,
+                        cfg.postprocess.diffusion_sigma,
+                    )
         shuffle=shuffle,
         batch_size=cfg.batch_size,
         num_workers=4,

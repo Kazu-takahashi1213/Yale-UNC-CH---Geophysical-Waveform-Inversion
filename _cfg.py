@@ -9,7 +9,15 @@ cfg.seed = 123
 cfg.subsample = None
 
 
-cfg.backbone1 = "caformer_b36.sail_in22k_ft_in1k"
+    teacher_models=[
+        'vit_large_patch16_224',
+        'vit_base_patch16_224',
+    ],
+cfg.distill.teacher_model = cfg.distill.teacher_models[0]
+cfg.postprocess = SimpleNamespace(
+    diffusion_steps=3,
+    diffusion_sigma=0.1,
+)
 cfg.backbone = cfg.backbone1  # alias used by scripts
 
 cfg.batch_size = 8

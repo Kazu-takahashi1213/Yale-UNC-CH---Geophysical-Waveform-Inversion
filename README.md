@@ -1,6 +1,8 @@
 # Geophysical Waveform Inversion
 
 
+- **Ensemble distillation** from multiple teachers for improved generalization.
+- **Diffusion-based post-processing** to smooth predictions before evaluation.
 This repository contains helper modules for Kaggle competitions on full waveform inversion. The training loop can run either in distributed mode or on a single GPU (e.g. Kaggle). It includes several data augmentation strategies and a knowledge distillation setup.
 
 
