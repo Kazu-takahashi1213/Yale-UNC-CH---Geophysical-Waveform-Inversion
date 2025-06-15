@@ -2,7 +2,6 @@ import datetime
 
 import torch
 
-
 def format_time(elapsed: float) -> str:
     """Format seconds to hh:mm:ss."""
     elapsed_rounded = int(round(elapsed))
