@@ -1,5 +1,7 @@
 import datetime
+
 import torch
+
 
 def format_time(elapsed: float) -> str:
     """Format seconds to hh:mm:ss."""
@@ -13,3 +15,4 @@ def diffusion_smoothing(x, steps=3, sigma=0.1):
         x = x + noise
         x = torch.nn.functional.avg_pool2d(x, 3, stride=1, padding=1)
     return x
+
