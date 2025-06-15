@@ -59,6 +59,7 @@ def cleanup():
         dist.barrier()
         dist.destroy_process_group()
 
+
     return
 
 def main(cfg):
@@ -75,6 +76,7 @@ def main(cfg):
     else:
         sampler = None
         shuffle = True
+
     train_dl = torch.utils.data.DataLoader(
         train_ds,
         sampler=sampler,
@@ -102,24 +104,29 @@ def main(cfg):
         num_replicas=cfg.world_size, 
         rank=cfg.local_rank,
     )
+
     train_dl = torch.utils.data.DataLoader(
-        train_ds, 
-        sampler= sampler,
-        batch_size= cfg.batch_size, 
-        num_workers= 4,
+        train_ds,
+        sampler=sampler,
+        shuffle=shuffle,
+        batch_size=cfg.batch_size,
+        num_workers=4,
     )
     
     valid_ds = CustomDataset(cfg=cfg, mode="valid")
-    sampler= DistributedSampler(
-        valid_ds, 
-        num_replicas=cfg.world_size, 
-        rank=cfg.local_rank,
-    )
+    if cfg.world_size > 1:
+        sampler = DistributedSampler(valid_ds, num_replicas=cfg.world_size, rank=cfg.local_rank)
+        shuffle = False
+    else:
+        sampler = None
+        shuffle = False
     valid_dl = torch.utils.data.DataLoader(
+
         valid_ds, 
         sampler= sampler,
         batch_size= cfg.batch_size_val, 
         num_workers= 4,
+
 
     )
 

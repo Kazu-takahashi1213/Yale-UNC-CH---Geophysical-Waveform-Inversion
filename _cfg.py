@@ -39,3 +39,4 @@ cfg.distill = SimpleNamespace(
 )
 cfg.phys_weight = 0.1
 cfg.multi_scales = [1, 2, 4]
+
