@@ -16,7 +16,9 @@ from torch.nn.parallel import DistributedDataParallel
 from _cfg import cfg
 from _dataset import CustomDataset
 from _model import ModelEMA, Net
+
 from _utils import format_time, diffusion_smoothing
+
 from _aug import mixup, cutmix
 
 
@@ -49,6 +51,7 @@ def set_seed(seed=1234):
 
 def setup(rank, world_size):
     torch.cuda.set_device(rank)
+
     if world_size > 1:
         dist.init_process_group("nccl", rank=rank, world_size=world_size)
     return
@@ -57,6 +60,7 @@ def cleanup():
     if dist.is_initialized():
         dist.barrier()
         dist.destroy_process_group()
+
     return
 
 def main(cfg):
@@ -66,12 +70,14 @@ def main(cfg):
         print("="*25)
         print("Loading data..")
     train_ds = CustomDataset(cfg=cfg, mode="train")
+
     if cfg.world_size > 1:
         sampler = DistributedSampler(train_ds, num_replicas=cfg.world_size, rank=cfg.local_rank)
         shuffle = False
     else:
         sampler = None
         shuffle = True
+
     train_dl = torch.utils.data.DataLoader(
         train_ds,
         sampler=sampler,
@@ -93,10 +99,12 @@ def main(cfg):
         shuffle=shuffle,
         batch_size=cfg.batch_size_val,
         num_workers=4,
+
     )
 
     # ========== Model / Optim ==========
     model = Net(backbone=cfg.backbone)
+
     model = model.to(cfg.local_rank)
 
     teachers = []
@@ -105,6 +113,7 @@ def main(cfg):
         t_net = t_net.to(cfg.local_rank)
         t_net.eval()
         teachers.append(t_net)
+
     if cfg.ema:
         if cfg.local_rank == 0:
             print("Initializing EMA model..")
@@ -115,10 +124,12 @@ def main(cfg):
         )
     else:
         ema_model = None
+
     if cfg.world_size > 1:
         model = DistributedDataParallel(
             model,
             device_ids=[cfg.local_rank],
+
         )
     
     criterion = nn.L1Loss()
@@ -137,9 +148,11 @@ def main(cfg):
 
     for epoch in range(0, cfg.epochs+1):
         if epoch != 0:
+
             tstart = time.time()
             if hasattr(train_dl.sampler, "set_epoch"):
                 train_dl.sampler.set_epoch(epoch)
+
     
             # Train loop
             model.train()
@@ -154,6 +167,7 @@ def main(cfg):
         
                 with autocast(cfg.device.type):
                     with torch.no_grad():
+
                         t_outs = [t(x) for t in teachers]
                         t_logits = torch.stack(t_outs).mean(dim=0)
                     logits = model(x)
@@ -162,6 +176,7 @@ def main(cfg):
                         cfg.postprocess.diffusion_steps,
                         cfg.postprocess.diffusion_sigma,
                     )
+
                     mae = multi_scale_loss(logits, y, cfg.multi_scales)
                     distill_loss = F.mse_loss(logits, t_logits)
                     phys = gradient_loss(logits, y) * cfg.phys_weight
@@ -207,11 +222,13 @@ def main(cfg):
                         out = ema_model.module(x)
                     else:
                         out = model(x)
+
                     out = diffusion_smoothing(
                         out,
                         cfg.postprocess.diffusion_steps,
                         cfg.postprocess.diffusion_sigma,
                     )
+
 
                 val_logits.append(out.cpu())
                 val_targets.append(y.cpu())
@@ -223,11 +240,13 @@ def main(cfg):
 
         # Gather loss
         v = torch.tensor([loss], device=cfg.local_rank)
+
         if cfg.world_size > 1:
             torch.distributed.all_reduce(v, op=dist.ReduceOp.SUM)
             val_loss = (v[0] / cfg.world_size).item()
         else:
             val_loss = v.item()
+
     
         # ========== Weights / Early stopping ==========
         stop_train = torch.tensor([0], device=cfg.local_rank)
@@ -251,8 +270,10 @@ def main(cfg):
                     stop_train = torch.tensor([1], device=cfg.local_rank)
         
         # Exits training on all ranks
+
         if cfg.world_size > 1:
             dist.broadcast(stop_train, src=0)
+
         if stop_train.item() == 1:
             return
 
@@ -265,6 +286,7 @@ if __name__ == "__main__":
     # GPU Specs
     rank = int(os.environ.get("RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
+
     _, total = torch.cuda.mem_get_info(device=rank)
 
     # Init

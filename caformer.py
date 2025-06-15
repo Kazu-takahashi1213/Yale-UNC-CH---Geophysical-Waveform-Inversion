@@ -518,6 +518,7 @@ if __name__ == "__main__":
 }
 
 def export(path="."):
+
     """Write helper modules to *path* using Jupyter ``%%writefile`` when available."""
     os.makedirs(path, exist_ok=True)
     ip = globals().get("get_ipython", lambda: None)()
@@ -529,6 +530,7 @@ def export(path="."):
         else:
             with open(os.path.join(path, fname), "w") as f:
                 f.write(code)
+
     print("Exported modules to", os.path.abspath(path))
 
 if __name__ == "__main__":
