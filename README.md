@@ -1,5 +1,6 @@
 # Geophysical Waveform Inversion
 
+
 This repository contains helper modules for Kaggle competitions on full waveform inversion. The training loop can run either in distributed mode or on a single GPU (e.g. Kaggle). It includes several data augmentation strategies and a knowledge distillation setup.
 
 ## Running on Kaggle
@@ -7,6 +8,7 @@ This repository contains helper modules for Kaggle competitions on full waveform
 1. Upload either the individual helper files or just `caformer.py` to your Kaggle Notebook or dataset.
    If you only upload `caformer.py`, run `python caformer.py` once to export
    the helper modules.
+
 2. In a Kaggle Notebook cell run:
    ```python
    !python _train.py
@@ -16,6 +18,7 @@ This repository contains helper modules for Kaggle competitions on full waveform
 
 Edit `_cfg.py` to adjust hyperparameters such as batch size or number of epochs.
 
+
 ### Features
 
 - **RandAugment, MixUp, and CutMix** data augmentation in the training pipeline.
@@ -23,3 +26,4 @@ Edit `_cfg.py` to adjust hyperparameters such as batch size or number of epochs.
 - **EMA weights** and gradient-based physical loss for smoother convergence.
 - **Ensemble distillation** from multiple teachers for improved generalization.
 - **Diffusion-based post-processing** to smooth predictions before evaluation.
+
