@@ -8,7 +8,8 @@ cfg.local_rank = 0
 cfg.seed = 123
 cfg.subsample = None
 
-cfg.backbone = "caformer_b36.sail_in22k_ft_in1k"
+cfg.backbone1 = "caformer_b36.sail_in22k_ft_in1k"
+cfg.backbone = cfg.backbone1  # alias used by scripts
 cfg.batch_size = 8
 cfg.batch_size_val = 16
 cfg.epochs = 10
@@ -36,3 +37,4 @@ cfg.distill = SimpleNamespace(
 )
 cfg.phys_weight = 0.1
 cfg.multi_scales = [1, 2, 4]
+
